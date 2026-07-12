@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Revision Tracker - Academic Precision System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1a56db',
+            'primary-dark': '#1545b0',
+            surface: '#f8f9ff',
+            'surface-dark': '#eef1fb',
+          },
+          fontFamily: {
+            sans: ['Work Sans', 'sans-serif'],
+          },
+          borderRadius: {
+            DEFAULT: '4px',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'Work Sans', sans-serif; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .nav-item.active { color: #1a56db; border-bottom: 2px solid #1a56db; }
+    .progress-ring__circle { transition: stroke-dashoffset 0.35s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+    @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    .card-enter { animation: cardEnter 0.3s ease; }
+    @keyframes cardEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .loader { border: 3px solid #e5e7eb; border-top: 3px solid #1a56db; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .stage-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 9999px; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-surface min-h-screen">
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="screen-login" class="screen active">
+    <div class="min-h-screen flex items-center justify-center px-4">
+      <div class="bg-white rounded shadow-lg p-8 w-full max-w-sm">
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h1 class="text-xl font-bold text-gray-900">Revision Tracker</h1>
+          <p class="text-sm text-gray-500 mt-1">Academic Precision System</p>
+        </div>
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="login-email">Email</label>
+            <input id="login-email" type="email" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="your@email.com" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="login-password">Password</label>
+            <input id="login-password" type="password" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="••••••••" />
+          </div>
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" id="remember-device" class="rounded border-gray-300" />
+              Remember this device
+            </label>
+          </div>
+          <button type="submit"
+            class="w-full bg-primary text-white py-2 px-4 rounded text-sm font-medium hover:bg-primary-dark transition-colors">
+            Sign In
+          </button>
+          <p id="login-error" class="text-red-500 text-xs text-center hidden">Invalid credentials. Please try again.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APP SHELL ==================== -->
+  <div id="app-shell" class="hidden">
+    <!-- Top Navigation -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <h1 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+          <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Revision Tracker
+        </h1>
+        <button id="btn-logout" class="text-sm text-gray-500 hover:text-red-500 transition-colors">Logout</button>
+      </div>
+      <!-- Tab Navigation -->
+      <nav class="max-w-4xl mx-auto px-4 flex gap-1">
+        <button class="nav-item active px-4 py-2 text-sm font-medium text-gray-600" data-screen="dashboard">Today</button>
+        <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="add-entry">Add New</button>
+        <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="all-entries">All Entries</button>
+        <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="settings">Settings</button>
+      </nav>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6">
+
+      <!-- ==================== DASHBOARD SCREEN ==================== -->
+      <div id="screen-dashboard" class="screen active">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Today's Revision</h2>
+            <p class="text-sm text-gray-500" id="dashboard-date"></p>
+          </div>
+          <!-- Circular Progress -->
+          <div class="relative flex items-center justify-center">
+            <svg class="w-16 h-16" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="28" stroke="#e5e7eb" stroke-width="4" fill="none" />
+              <circle id="progress-circle" class="progress-ring__circle" cx="32" cy="32" r="28"
+                stroke="#1a56db" stroke-width="4" fill="none"
+                stroke-dasharray="175.93" stroke-dashoffset="175.93" stroke-linecap="round" />
+            </svg>
+            <span id="progress-text" class="absolute text-xs font-bold text-primary">0%</span>
+          </div>
+        </div>
+
+        <!-- Subject Filter -->
+        <div class="mb-4 flex gap-2 flex-wrap" id="dashboard-filters">
+          <button class="filter-btn active px-3 py-1 text-xs font-medium rounded-full bg-primary text-white" data-filter="all">All</button>
+        </div>
+
+        <!-- Revision Cards -->
+        <div id="dashboard-cards" class="space-y-3">
+          <div class="text-center py-12 text-gray-400">
+            <div class="loader mx-auto mb-3"></div>
+            <p class="text-sm">Loading today's revisions...</p>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="dashboard-empty" class="hidden text-center py-12">
+          <svg class="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p class="text-gray-500 font-medium">All caught up!</p>
+          <p class="text-sm text-gray-400 mt-1">No revisions due today. Great work!</p>
+        </div>
+      </div>
+
+      <!-- ==================== ADD ENTRY SCREEN ==================== -->
+      <div id="screen-add-entry" class="screen">
+        <h2 class="text-xl font-bold text-gray-900 mb-6">Add New Entry</h2>
+        <form id="add-entry-form" class="bg-white rounded shadow-sm p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <select id="entry-subject" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+              <option value="" disabled selected>Select a subject...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input id="entry-title" type="text" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="e.g., Binary Search Trees" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea id="entry-notes" rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              placeholder="Key concepts, formulas, or summary..."></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Reference Links</label>
+            <div id="links-container" class="space-y-2">
+              <div class="flex gap-2">
+                <input type="url" class="link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="https://..." />
+                <button type="button" onclick="addLinkField()"
+                  class="px-3 py-2 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200 transition-colors font-bold">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interval Mode -->
+          <div class="border-t pt-4">
+            <div class="flex items-center justify-between mb-3">
+              <label class="text-sm font-medium text-gray-700">Spaced Repetition Intervals</label>
+              <label class="flex items-center gap-2 text-xs text-gray-500">
+                <input type="checkbox" id="custom-intervals-toggle" class="rounded border-gray-300" />
+                Custom Mode
+              </label>
+            </div>
+            <div id="default-intervals" class="flex gap-2 flex-wrap">
+              <span class="px-3 py-1 bg-blue-50 text-primary text-xs font-medium rounded-full">Day 1</span>
+              <span class="px-3 py-1 bg-blue-50 text-primary text-xs font-medium rounded-full">Day 7</span>
+              <span class="px-3 py-1 bg-blue-50 text-primary text-xs font-medium rounded-full">Day 30</span>
+              <span class="px-3 py-1 bg-blue-50 text-primary text-xs font-medium rounded-full">Day 90</span>
+            </div>
+            <div id="custom-intervals" class="hidden grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-gray-500">Stage 1 (days)</label>
+                <input type="number" id="interval-1" value="1" min="1"
+                  class="w-full px-3 py-2 border border-gray-300 rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Stage 2 (days)</label>
+                <input type="number" id="interval-2" value="7" min="1"
+                  class="w-full px-3 py-2 border border-gray-300 rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Stage 3 (days)</label>
+                <input type="number" id="interval-3" value="30" min="1"
+                  class="w-full px-3 py-2 border border-gray-300 rounded text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Stage 4 (days)</label>
+                <input type="number" id="interval-4" value="90" min="1"
+                  class="w-full px-3 py-2 border border-gray-300 rounded text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-save-entry"
+            class="w-full bg-primary text-white py-2.5 px-4 rounded text-sm font-medium hover:bg-primary-dark transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            Save Entry
+          </button>
+        </form>
+      </div>
+
+      <!-- ==================== ALL ENTRIES SCREEN ==================== -->
+      <div id="screen-all-entries" class="screen">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-gray-900">All Entries</h2>
+          <select id="all-entries-filter" class="px-3 py-1.5 border border-gray-300 rounded text-sm">
+            <option value="all">All Subjects</option>
+          </select>
+        </div>
+        <div id="all-entries-list" class="space-y-3">
+          <div class="text-center py-12 text-gray-400">
+            <div class="loader mx-auto mb-3"></div>
+            <p class="text-sm">Loading entries...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SETTINGS SCREEN ==================== -->
+      <div id="screen-settings" class="screen">
+        <h2 class="text-xl font-bold text-gray-900 mb-6">Settings</h2>
+
+        <!-- Subject Management -->
+        <div class="bg-white rounded shadow-sm p-6 mb-4">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Subject Management</h3>
+          <div class="flex gap-2 mb-4">
+            <input id="new-subject-input" type="text"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Add a new subject..." />
+            <button id="btn-add-subject"
+              class="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary-dark transition-colors">Add</button>
+          </div>
+          <div id="subjects-list" class="space-y-2"></div>
+        </div>
+
+        <!-- Sync Integration -->
+        <div class="bg-white rounded shadow-sm p-6 mb-4">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Google Sheets Sync</h3>
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <p class="text-sm text-gray-700">Connection Status</p>
+              <p class="text-xs text-gray-400" id="last-sync-time">Last synced: Never</p>
+            </div>
+            <button id="btn-sync-now"
+              class="px-4 py-2 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Sync Now
+            </button>
+          </div>
+        </div>
+
+        <!-- Mastery Analytics -->
+        <div class="bg-white rounded shadow-sm p-6">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">Mastery Analytics</h3>
+          <div id="analytics-container" class="space-y-4">
+            <p class="text-sm text-gray-400">Loading analytics...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+
+  <!-- ==================== JAVASCRIPT ==================== -->
+  <script>
+    // ============ CONFIGURATION ============
+    // IMPORTANT: Replace this with your deployed Google Apps Script Web App URL
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzu9rNFN2ASgWkyUwfTRkl4FX347V4WtJGpkBgownqVVisLZzMJHdrcIVpgYWClxNE/exec';
+
+    // Static credentials (as per requirement)
+    const AUTH_EMAIL = 'mnnit4abhishek@gmail.com';
+    const AUTH_PASSWORD = 'India@123';
+
+    // ============ STATE ============
+    let state = {
+      entries: [],
+      todayEntries: [],
+      subjects: [],
+      completedToday: new Set(),
+      activeFilter: 'all',
+    };
+
+    // ============ UTILITY FUNCTIONS ============
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-primary' };
+      toast.className = `toast px-4 py-2 rounded text-white text-sm font-medium shadow-lg ${colors[type] || colors.info}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return 'N/A';
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function getStageName(stage) {
+      const names = ['New', 'Day 1', 'Day 7', 'Day 30', 'Day 90 (Mastered)'];
+      return names[stage] || 'Unknown';
+    }
+
+    function getStageColor(stage) {
+      const colors = ['bg-gray-100 text-gray-600', 'bg-yellow-100 text-yellow-700', 'bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-green-100 text-green-700'];
+      return colors[stage] || colors[0];
+    }
+
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
+    // ============ API FUNCTIONS ============
+    async function apiGet(action) {
+      try {
+        const res = await fetch(`${SCRIPT_URL}?action=${action}`, { redirect: 'follow' });
+        return await res.json();
+      } catch (err) {
+        console.error('API GET Error:', err);
+        showToast('Network error. Check your connection.', 'error');
+        return { result: 'error', error: err.message };
+      }
+    }
+
+    async function apiPost(data) {
+      try {
+        // Use FormData to avoid CORS preflight (no OPTIONS request)
+        const formData = new FormData();
+        formData.append('payload', JSON.stringify(data));
+        const res = await fetch(SCRIPT_URL, {
+          method: 'POST',
+          body: formData,
+        });
+        return await res.json();
+      } catch (err) {
+        console.error('API POST Error:', err);
+        showToast('Network error. Check your connection.', 'error');
+        return { result: 'error', error: err.message };
+      }
+    }
+
+    // ============ AUTHENTICATION ============
+    function checkSession() {
+      const session = localStorage.getItem('revision_tracker_session');
+      if (session === 'active') {
+        showApp();
+      }
+    }
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const remember = document.getElementById('remember-device').checked;
+
+      if (email === AUTH_EMAIL && password === AUTH_PASSWORD) {
+        if (remember) {
+          localStorage.setItem('revision_tracker_session', 'active');
+        } else {
+          sessionStorage.setItem('revision_tracker_session', 'active');
+        }
+        document.getElementById('login-error').classList.add('hidden');
+        showApp();
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', function() {
+      localStorage.removeItem('revision_tracker_session');
+      sessionStorage.removeItem('revision_tracker_session');
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('screen-login').classList.add('active');
+    });
+
+    function showApp() {
+      document.getElementById('screen-login').classList.remove('active');
+      document.getElementById('app-shell').classList.remove('hidden');
+      initApp();
+    }
+
+    // ============ NAVIGATION ============
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const target = this.dataset.screen;
+        document.querySelectorAll('#app-shell .screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(`screen-${target}`).classList.add('active');
+
+        // Refresh data when switching tabs
+        if (target === 'dashboard') loadTodayRevisions();
+        if (target === 'all-entries') loadAllEntries();
+        if (target === 'settings') { loadSubjects(); loadStats(); }
+        if (target === 'add-entry') populateSubjectDropdown();
+      });
+    });
+
+    // ============ INITIALIZE APP ============
+    async function initApp() {
+      document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('en-IN', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+      });
+
+      // Load data in parallel
+      await Promise.all([loadTodayRevisions(), loadSubjects()]);
+
+      // Load completed set from localStorage
+      const today = new Date().toDateString();
+      const stored = JSON.parse(localStorage.getItem('completed_today') || '{}');
+      if (stored.date === today) {
+        state.completedToday = new Set(stored.ids);
+      } else {
+        localStorage.setItem('completed_today', JSON.stringify({ date: today, ids: [] }));
+      }
+      updateProgress();
+    }
+
+    // ============ DASHBOARD ============
+    async function loadTodayRevisions() {
+      const res = await apiGet('getTodayRevisions');
+      if (res.result === 'success') {
+        state.todayEntries = res.entries;
+        renderDashboard();
+      }
+    }
+
+    function renderDashboard() {
+      const container = document.getElementById('dashboard-cards');
+      const emptyState = document.getElementById('dashboard-empty');
+      const filtersContainer = document.getElementById('dashboard-filters');
+
+      let filtered = state.todayEntries;
+      if (state.activeFilter !== 'all') {
+        filtered = filtered.filter(e => e.subject === state.activeFilter);
+      }
+
+      // Build filter buttons
+      const subjects = [...new Set(state.todayEntries.map(e => e.subject))];
+      filtersContainer.innerHTML = `
+        <button class="filter-btn ${state.activeFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'} px-3 py-1 text-xs font-medium rounded-full" data-filter="all">All</button>
+        ${subjects.map(s => `
+          <button class="filter-btn ${state.activeFilter === s ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'} px-3 py-1 text-xs font-medium rounded-full" data-filter="${s}">${s}</button>
+        `).join('')}
+      `;
+
+      // Attach filter events
+      filtersContainer.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          state.activeFilter = this.dataset.filter;
+          renderDashboard();
+        });
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = filtered.map(entry => {
+        const isDone = state.completedToday.has(entry.entry_id);
+        return `
+          <div class="card-enter bg-white rounded shadow-sm p-4 ${isDone ? 'opacity-50' : ''}">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="stage-badge ${getStageColor(entry.current_stage)}">${getStageName(entry.current_stage)}</span>
+                  <span class="text-xs text-gray-400">${entry.subject}</span>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-900">${entry.title}</h3>
+                ${entry.notes ? `<p class="text-xs text-gray-500 mt-1 line-clamp-2">${entry.notes.substring(0, 100)}${entry.notes.length > 100 ? '...' : ''}</p>` : ''}
+              </div>
+              <button onclick="markEntryDone('${entry.entry_id}')" 
+                class="ml-3 px-3 py-1.5 text-xs font-medium rounded transition-colors ${isDone ? 'bg-green-100 text-green-700 cursor-default' : 'bg-primary text-white hover:bg-primary-dark'}"
+                ${isDone ? 'disabled' : ''}>
+                ${isDone ? '✓ Done' : 'Mark Done'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateProgress();
+    }
+
+    async function markEntryDone(entryId) {
+      if (state.completedToday.has(entryId)) return;
+
+      const res = await apiPost({ action: 'markDone', entry_id: entryId });
+      if (res.result === 'success') {
+        state.completedToday.add(entryId);
+        const today = new Date().toDateString();
+        localStorage.setItem('completed_today', JSON.stringify({ date: today, ids: [...state.completedToday] }));
+
+        if (res.mastered) {
+          showToast('🎉 Topic mastered! Great work!', 'success');
+        } else {
+          showToast(`Marked done! Next review in ${getDaysUntil(res.next_review_at)} days.`, 'success');
+        }
+        renderDashboard();
+      } else {
+        showToast('Failed to mark as done.', 'error');
+      }
+    }
+
+    function getDaysUntil(dateStr) {
+      const target = new Date(dateStr);
+      const now = new Date();
+      return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+    }
+
+    function updateProgress() {
+      const total = state.todayEntries.length;
+      const done = state.todayEntries.filter(e => state.completedToday.has(e.entry_id)).length;
+      const percent = total === 0 ? 100 : Math.round((done / total) * 100);
+
+      const circle = document.getElementById('progress-circle');
+      const circumference = 2 * Math.PI * 28; // r=28
+      const offset = circumference - (percent / 100) * circumference;
+      circle.style.strokeDashoffset = offset;
+
+      document.getElementById('progress-text').textContent = `${percent}%`;
+    }
+
+    // ============ ADD ENTRY ============
+    function populateSubjectDropdown() {
+      const select = document.getElementById('entry-subject');
+      select.innerHTML = '<option value="" disabled selected>Select a subject...</option>';
+      state.subjects.forEach(sub => {
+        select.innerHTML += `<option value="${sub}">${sub}</option>`;
+      });
+    }
+
+    document.getElementById('custom-intervals-toggle').addEventListener('change', function() {
+      document.getElementById('default-intervals').classList.toggle('hidden', this.checked);
+      document.getElementById('custom-intervals').classList.toggle('hidden', !this.checked);
+    });
+
+    function addLinkField() {
+      const container = document.getElementById('links-container');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2';
+      div.innerHTML = `
+        <input type="url" class="link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="https://..." />
+        <button type="button" onclick="this.parentElement.remove()"
+          class="px-3 py-2 bg-red-50 text-red-500 rounded text-sm hover:bg-red-100 transition-colors font-bold">−</button>
+      `;
+      container.appendChild(div);
+    }
+
+    document.getElementById('add-entry-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('btn-save-entry');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="loader mx-auto" style="width:16px;height:16px;border-width:2px;"></div>';
+
+      const subject = document.getElementById('entry-subject').value;
+      const title = document.getElementById('entry-title').value;
+      const notes = document.getElementById('entry-notes').value;
+      const linkInputs = document.querySelectorAll('.link-input');
+      const links = [...linkInputs].map(i => i.value).filter(v => v.trim());
+
+      let intervals = { stage_1: 1, stage_2: 7, stage_3: 30, stage_4: 90 };
+      if (document.getElementById('custom-intervals-toggle').checked) {
+        intervals = {
+          stage_1: parseInt(document.getElementById('interval-1').value) || 1,
+          stage_2: parseInt(document.getElementById('interval-2').value) || 7,
+          stage_3: parseInt(document.getElementById('interval-3').value) || 30,
+          stage_4: parseInt(document.getElementById('interval-4').value) || 90,
+        };
+      }
+
+      const data = {
+        action: 'addEntry',
+        entry_id: generateUUID(),
+        subject,
+        title,
+        notes,
+        links,
+        intervals,
+      };
+
+      const res = await apiPost(data);
+
+      btn.disabled = false;
+      btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Save Entry`;
+
+      if (res.result === 'success') {
+        showToast('Entry saved successfully!', 'success');
+        this.reset();
+        document.getElementById('links-container').innerHTML = `
+          <div class="flex gap-2">
+            <input type="url" class="link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="https://..." />
+            <button type="button" onclick="addLinkField()" class="px-3 py-2 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200 transition-colors font-bold">+</button>
+          </div>`;
+        document.getElementById('custom-intervals-toggle').checked = false;
+        document.getElementById('default-intervals').classList.remove('hidden');
+        document.getElementById('custom-intervals').classList.add('hidden');
+      } else {
+        showToast('Failed to save entry. Please try again.', 'error');
+      }
+    });
+
+    // ============ ALL ENTRIES ============
+    async function loadAllEntries() {
+      const res = await apiGet('getEntries');
+      if (res.result === 'success') {
+        state.entries = res.entries;
+        renderAllEntries();
+      }
+    }
+
+    function renderAllEntries() {
+      const container = document.getElementById('all-entries-list');
+      const filter = document.getElementById('all-entries-filter').value;
+
+      // Populate filter dropdown
+      const filterSelect = document.getElementById('all-entries-filter');
+      const currentVal = filterSelect.value;
+      filterSelect.innerHTML = '<option value="all">All Subjects</option>';
+      state.subjects.forEach(s => {
+        filterSelect.innerHTML += `<option value="${s}" ${currentVal === s ? 'selected' : ''}>${s}</option>`;
+      });
+
+      let entries = state.entries;
+      if (filter !== 'all') {
+        entries = entries.filter(e => e.subject === filter);
+      }
+
+      if (entries.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-gray-400">
+            <p class="text-sm">No entries found.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = entries.map(entry => `
+        <div class="card-enter bg-white rounded shadow-sm p-4">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="stage-badge ${getStageColor(entry.current_stage)}">${getStageName(entry.current_stage)}</span>
+                <span class="text-xs text-gray-400">${entry.subject}</span>
+              </div>
+              <h3 class="text-sm font-semibold text-gray-900">${entry.title}</h3>
+              ${entry.notes ? `<p class="text-xs text-gray-500 mt-1">${entry.notes.substring(0, 120)}${entry.notes.length > 120 ? '...' : ''}</p>` : ''}
+              <div class="flex items-center gap-3 mt-2 text-xs text-gray-400">
+                <span>Next: ${formatDate(entry.next_review_at)}</span>
+                <span>Created: ${formatDate(entry.created_at)}</span>
+              </div>
+              ${entry.links && entry.links.length > 0 ? `
+                <div class="flex gap-1 mt-2 flex-wrap">
+                  ${entry.links.map((link, i) => `<a href="${link}" target="_blank" class="text-xs text-primary hover:underline">Link ${i+1}</a>`).join(' · ')}
+                </div>` : ''}
+            </div>
+            <button onclick="deleteEntry('${entry.entry_id}')" 
+              class="ml-3 p-1.5 text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('all-entries-filter').addEventListener('change', renderAllEntries);
+
+    async function deleteEntry(entryId) {
+      if (!confirm('Are you sure you want to delete this entry?')) return;
+      const res = await apiPost({ action: 'deleteEntry', entry_id: entryId });
+      if (res.result === 'success') {
+        showToast('Entry deleted.', 'info');
+        state.entries = state.entries.filter(e => e.entry_id !== entryId);
+        renderAllEntries();
+      } else {
+        showToast('Failed to delete entry.', 'error');
+      }
+    }
+
+    // ============ SETTINGS - SUBJECTS ============
+    async function loadSubjects() {
+      const res = await apiGet('getSubjects');
+      if (res.result === 'success') {
+        state.subjects = res.subjects;
+        renderSubjects();
+        populateSubjectDropdown();
+      }
+    }
+
+    function renderSubjects() {
+      const container = document.getElementById('subjects-list');
+      if (state.subjects.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400">No subjects yet. Add one above.</p>';
+        return;
+      }
+      container.innerHTML = state.subjects.map(sub => `
+        <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded">
+          <span class="text-sm text-gray-700">${sub}</span>
+          <button onclick="deleteSubject('${sub}')" class="text-xs text-red-400 hover:text-red-600 transition-colors">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('btn-add-subject').addEventListener('click', async function() {
+      const input = document.getElementById('new-subject-input');
+      const subject = input.value.trim();
+      if (!subject) return;
+
+      const res = await apiPost({ action: 'addSubject', subject });
+      if (res.result === 'success') {
+        state.subjects.push(subject);
+        renderSubjects();
+        populateSubjectDropdown();
+        input.value = '';
+        showToast(`Subject "${subject}" added.`, 'success');
+      } else {
+        showToast('Failed to add subject.', 'error');
+      }
+    });
+
+    async function deleteSubject(subject) {
+      if (!confirm(`Delete subject "${subject}"? This won't remove existing entries.`)) return;
+      const res = await apiPost({ action: 'deleteSubject', subject });
+      if (res.result === 'success') {
+        state.subjects = state.subjects.filter(s => s !== subject);
+        renderSubjects();
+        populateSubjectDropdown();
+        showToast(`Subject "${subject}" removed.`, 'info');
+      } else {
+        showToast('Failed to delete subject.', 'error');
+      }
+    }
+
+    // ============ SETTINGS - SYNC ============
+    document.getElementById('btn-sync-now').addEventListener('click', async function() {
+      this.disabled = true;
+      this.innerHTML = '<div class="loader" style="width:16px;height:16px;border-width:2px;"></div> Syncing...';
+
+      await Promise.all([loadTodayRevisions(), loadSubjects(), loadAllEntries(), loadStats()]);
+
+      const now = new Date().toLocaleString('en-IN');
+      document.getElementById('last-sync-time').textContent = `Last synced: ${now}`;
+      localStorage.setItem('last_sync_time', now);
+
+      this.disabled = false;
+      this.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Sync Now`;
+      showToast('Sync complete!', 'success');
+    });
+
+    // Restore last sync time
+    const savedSyncTime = localStorage.getItem('last_sync_time');
+    if (savedSyncTime) {
+      document.getElementById('last-sync-time').textContent = `Last synced: ${savedSyncTime}`;
+    }
+
+    // ============ SETTINGS - ANALYTICS ============
+    async function loadStats() {
+      const res = await apiGet('getStats');
+      if (res.result === 'success') {
+        renderAnalytics(res.stats);
+      }
+    }
+
+    function renderAnalytics(stats) {
+      const container = document.getElementById('analytics-container');
+      const subjects = Object.keys(stats);
+
+      if (subjects.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400">No data yet. Add some entries to see analytics.</p>';
+        return;
+      }
+
+      container.innerHTML = subjects.map(sub => {
+        const data = stats[sub];
+        const masteryPercent = data.total > 0 ? Math.round((data.mastered / data.total) * 100) : 0;
+        return `
+          <div class="border-b border-gray-100 pb-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">${sub}</span>
+              <span class="text-xs text-gray-500">${data.mastered}/${data.total} mastered</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div class="bg-primary h-2 rounded-full transition-all" style="width: ${masteryPercent}%"></div>
+            </div>
+            <div class="flex justify-between mt-1">
+              <span class="text-xs text-gray-400">Stage breakdown: ${data.stages.join(' → ')}</span>
+              <span class="text-xs font-medium text-primary">${masteryPercent}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ============ INITIALIZATION ============
+    // Check for existing session on page load
+    checkSession();
+    if (sessionStorage.getItem('revision_tracker_session') === 'active') {
+      showApp();
+    }
+  </script>
+</body>
+</html>
