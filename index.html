@@ -105,8 +105,9 @@
         <button id="btn-logout" class="text-sm text-gray-500 hover:text-red-500 transition-colors">Logout</button>
       </div>
       <!-- Tab Navigation -->
-      <nav class="max-w-4xl mx-auto px-4 flex gap-1">
+      <nav class="max-w-4xl mx-auto px-4 flex gap-1 overflow-x-auto">
         <button class="nav-item active px-4 py-2 text-sm font-medium text-gray-600" data-screen="dashboard">Today</button>
+        <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="capture">Capture</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="add-entry">Add New</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="all-entries">All Entries</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="settings">Settings</button>
@@ -154,6 +155,71 @@
           </svg>
           <p class="text-gray-500 font-medium">All caught up!</p>
           <p class="text-sm text-gray-400 mt-1">No revisions due today. Great work!</p>
+        </div>
+      </div>
+
+      <!-- ==================== CAPTURE SCREEN ==================== -->
+      <div id="screen-capture" class="screen">
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Quick Capture</h2>
+        <p class="text-sm text-gray-500 mb-6">Jot down thoughts, topics to explore, or tasks to do.</p>
+
+        <!-- Capture Type Tabs -->
+        <div class="flex gap-2 mb-4">
+          <button class="capture-type-btn active px-4 py-1.5 text-xs font-medium rounded-full bg-primary text-white" data-type="thought">💡 Thought</button>
+          <button class="capture-type-btn px-4 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600" data-type="topic">📚 Topic</button>
+          <button class="capture-type-btn px-4 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600" data-type="task">✅ Task</button>
+        </div>
+
+        <!-- Capture Form -->
+        <form id="capture-form" class="bg-white rounded shadow-sm p-5 mb-6">
+          <input type="hidden" id="capture-type" value="thought" />
+          <div class="mb-3">
+            <input id="capture-title" type="text" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="What's on your mind?" />
+          </div>
+          <div class="mb-3">
+            <textarea id="capture-description" rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              placeholder="Add details (optional)..."></textarea>
+          </div>
+          <div class="mb-3" id="capture-priority-wrap">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Priority</label>
+            <select id="capture-priority" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div class="mb-3" id="capture-links-wrap">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Reference Links</label>
+            <div id="capture-links-container" class="space-y-2">
+              <div class="flex gap-2">
+                <input type="url" class="capture-link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="https://..." />
+                <button type="button" onclick="addCaptureLinkField()"
+                  class="px-3 py-2 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200 transition-colors font-bold">+</button>
+              </div>
+            </div>
+          </div>
+          <button type="submit" id="btn-save-capture"
+            class="w-full bg-primary text-white py-2 px-4 rounded text-sm font-medium hover:bg-primary-dark transition-colors">
+            Save
+          </button>
+        </form>
+
+        <!-- Capture List -->
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-700">Recent Captures</h3>
+          <select id="capture-filter" class="px-3 py-1 border border-gray-300 rounded text-xs">
+            <option value="all">All Types</option>
+            <option value="thought">💡 Thoughts</option>
+            <option value="topic">📚 Topics</option>
+            <option value="task">✅ Tasks</option>
+          </select>
+        </div>
+        <div id="capture-list" class="space-y-2">
+          <p class="text-sm text-gray-400 text-center py-6">No captures yet.</p>
         </div>
       </div>
 
@@ -436,6 +502,7 @@
 
         // Refresh data when switching tabs
         if (target === 'dashboard') loadTodayRevisions();
+        if (target === 'capture') loadCaptures();
         if (target === 'all-entries') loadAllEntries();
         if (target === 'settings') { loadSubjects(); loadStats(); }
         if (target === 'add-entry') populateSubjectDropdown();
@@ -841,6 +908,168 @@
           </div>
         `;
       }).join('');
+    }
+
+    // ============ CAPTURE (THOUGHTS / TOPICS / TASKS) ============
+    let captureState = { items: [], activeType: 'thought' };
+
+    // Capture type tab switching
+    document.querySelectorAll('.capture-type-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.capture-type-btn').forEach(b => {
+          b.classList.remove('active', 'bg-primary', 'text-white');
+          b.classList.add('bg-gray-100', 'text-gray-600');
+        });
+        this.classList.add('active', 'bg-primary', 'text-white');
+        this.classList.remove('bg-gray-100', 'text-gray-600');
+
+        const type = this.dataset.type;
+        captureState.activeType = type;
+        document.getElementById('capture-type').value = type;
+
+        // Update placeholder based on type
+        const placeholders = {
+          thought: "What's on your mind?",
+          topic: "Topic to explore or learn...",
+          task: "What needs to be done?"
+        };
+        document.getElementById('capture-title').placeholder = placeholders[type];
+
+        // Show/hide priority for tasks, show/hide links for thought/topic
+        document.getElementById('capture-priority-wrap').style.display = type === 'task' ? 'block' : 'none';
+        document.getElementById('capture-links-wrap').style.display = type === 'task' ? 'none' : 'block';
+      });
+    });
+
+    // Initially hide priority (only for tasks), show links
+    document.getElementById('capture-priority-wrap').style.display = 'none';
+    document.getElementById('capture-links-wrap').style.display = 'block';
+
+    function addCaptureLinkField() {
+      const container = document.getElementById('capture-links-container');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2';
+      div.innerHTML = `
+        <input type="url" class="capture-link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="https://..." />
+        <button type="button" onclick="this.parentElement.remove()"
+          class="px-3 py-2 bg-red-50 text-red-500 rounded text-sm hover:bg-red-100 transition-colors font-bold">−</button>
+      `;
+      container.appendChild(div);
+    }
+
+    // Save capture
+    document.getElementById('capture-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-capture');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const data = {
+        action: 'addCapture',
+        capture_id: generateUUID(),
+        type: document.getElementById('capture-type').value,
+        title: document.getElementById('capture-title').value,
+        description: document.getElementById('capture-description').value,
+        priority: document.getElementById('capture-priority').value,
+        links: [...document.querySelectorAll('.capture-link-input')].map(i => i.value).filter(v => v.trim()),
+        status: 'open',
+      };
+
+      const res = await apiPost(data);
+      btn.disabled = false;
+      btn.textContent = 'Save';
+
+      if (res.result === 'success') {
+        showToast('Captured!', 'success');
+        this.reset();
+        document.getElementById('capture-type').value = captureState.activeType;
+        // Reset links container
+        document.getElementById('capture-links-container').innerHTML = `
+          <div class="flex gap-2">
+            <input type="url" class="capture-link-input flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary" placeholder="https://..." />
+            <button type="button" onclick="addCaptureLinkField()" class="px-3 py-2 bg-gray-100 text-gray-600 rounded text-sm hover:bg-gray-200 transition-colors font-bold">+</button>
+          </div>`;
+        loadCaptures();
+      } else {
+        showToast('Failed to save capture.', 'error');
+      }
+    });
+
+    // Load captures
+    async function loadCaptures() {
+      const res = await apiGet('getCaptures');
+      if (res.result === 'success') {
+        captureState.items = res.captures;
+        renderCaptures();
+      }
+    }
+
+    // Filter captures
+    document.getElementById('capture-filter').addEventListener('change', renderCaptures);
+
+    function renderCaptures() {
+      const container = document.getElementById('capture-list');
+      const filter = document.getElementById('capture-filter').value;
+
+      let items = captureState.items;
+      if (filter !== 'all') {
+        items = items.filter(c => c.type === filter);
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">No captures yet.</p>';
+        return;
+      }
+
+      const typeIcons = { thought: '💡', topic: '📚', task: '✅' };
+      const priorityColors = { high: 'text-red-500', medium: 'text-yellow-500', low: 'text-gray-400' };
+
+      container.innerHTML = items.map(item => {
+        const isDone = item.status === 'done';
+        const links = item.links || [];
+        return `
+          <div class="card-enter bg-white rounded shadow-sm p-3 flex items-start gap-3 ${isDone ? 'opacity-50' : ''}">
+            <span class="text-base mt-0.5">${typeIcons[item.type] || '📝'}</span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h4 class="text-sm font-medium text-gray-900 ${isDone ? 'line-through' : ''} truncate">${item.title}</h4>
+                ${item.type === 'task' ? `<span class="text-xs ${priorityColors[item.priority] || ''}">${item.priority}</span>` : ''}
+              </div>
+              ${item.description ? `<p class="text-xs text-gray-500 mt-0.5 truncate">${item.description}</p>` : ''}
+              ${links.length > 0 ? `<div class="flex gap-1 mt-1 flex-wrap">${links.map((link, i) => `<a href="${link}" target="_blank" class="text-xs text-primary hover:underline">🔗 Link ${i+1}</a>`).join(' · ')}</div>` : ''}
+              <span class="text-xs text-gray-300">${formatDate(item.created_at)}</span>
+            </div>
+            <div class="flex gap-1">
+              ${item.type === 'task' && !isDone ? `
+                <button onclick="markCaptureDone('${item.capture_id}')" class="p-1 text-green-500 hover:text-green-700" title="Mark done">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                </button>` : ''}
+              <button onclick="deleteCapture('${item.capture_id}')" class="p-1 text-gray-400 hover:text-red-500" title="Delete">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function markCaptureDone(captureId) {
+      const res = await apiPost({ action: 'updateCapture', capture_id: captureId, status: 'done' });
+      if (res.result === 'success') {
+        showToast('Task completed!', 'success');
+        loadCaptures();
+      }
+    }
+
+    async function deleteCapture(captureId) {
+      if (!confirm('Delete this capture?')) return;
+      const res = await apiPost({ action: 'deleteCapture', capture_id: captureId });
+      if (res.result === 'success') {
+        showToast('Deleted.', 'info');
+        captureState.items = captureState.items.filter(c => c.capture_id !== captureId);
+        renderCaptures();
+      }
     }
 
     // ============ INITIALIZATION ============
