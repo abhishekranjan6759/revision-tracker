@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Revision Tracker - Academic Precision System</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -42,6 +42,15 @@
     .loader { border: 3px solid #e5e7eb; border-top: 3px solid #1a56db; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .stage-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 9999px; font-weight: 600; }
+    /* Custom scrollbar */
+    .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+    .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+    .overflow-y-auto::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    /* Mobile bottom nav */
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .mobile-nav-btn.active { color: #1a56db; }
+    .mobile-nav-btn.active svg { stroke-width: 2.5; }
   </style>
 </head>
 <body class="bg-surface min-h-screen">
@@ -104,8 +113,8 @@
         </h1>
         <button id="btn-logout" class="text-sm text-gray-500 hover:text-red-500 transition-colors">Logout</button>
       </div>
-      <!-- Tab Navigation -->
-      <nav class="max-w-4xl mx-auto px-4 flex gap-1 overflow-x-auto">
+      <!-- Tab Navigation (hidden on mobile, visible on md+) -->
+      <nav class="max-w-4xl mx-auto px-4 hidden md:flex gap-1 overflow-x-auto" id="desktop-nav">
         <button class="nav-item active px-4 py-2 text-sm font-medium text-gray-600" data-screen="dashboard">Today</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="capture">Capture</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="add-entry">Add New</button>
@@ -114,7 +123,44 @@
       </nav>
     </header>
 
-    <main class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Bottom Navigation (mobile only, visible below md) -->
+    <nav id="mobile-bottom-nav" class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex md:hidden safe-bottom">
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-primary" data-screen="dashboard">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        <span class="text-[10px] mt-0.5 font-medium">Today</span>
+      </button>
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="capture">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <span class="text-[10px] mt-0.5 font-medium">Capture</span>
+      </button>
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="add-entry">
+        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center -mt-3 shadow-lg">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <span class="text-[10px] mt-0.5 font-medium">Add</span>
+      </button>
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="all-entries">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+        <span class="text-[10px] mt-0.5 font-medium">Entries</span>
+      </button>
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="settings">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span class="text-[10px] mt-0.5 font-medium">Settings</span>
+      </button>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-6">
 
       <!-- ==================== DASHBOARD SCREEN ==================== -->
       <div id="screen-dashboard" class="screen active">
@@ -141,7 +187,7 @@
         </div>
 
         <!-- Revision Cards -->
-        <div id="dashboard-cards" class="space-y-3">
+        <div id="dashboard-cards" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
           <div class="text-center py-12 text-gray-400">
             <div class="loader mx-auto mb-3"></div>
             <p class="text-sm">Loading today's revisions...</p>
@@ -155,6 +201,44 @@
           </svg>
           <p class="text-gray-500 font-medium">All caught up!</p>
           <p class="text-sm text-gray-400 mt-1">No revisions due today. Great work!</p>
+        </div>
+
+        <!-- ========== HOW WAS YOUR DAY ========== -->
+        <div class="mt-8 bg-white rounded shadow-sm p-5">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">How was your day?</h3>
+          <div id="day-rating-saved" class="hidden mb-3 p-3 bg-green-50 rounded border border-green-200">
+            <p class="text-sm text-green-700 font-medium">Today's reflection saved ✓</p>
+            <p class="text-xs text-green-600 mt-1" id="day-rating-saved-summary"></p>
+          </div>
+          <div id="day-rating-form-wrapper">
+            <!-- Star Rating -->
+            <div class="flex items-center gap-1 mb-3" id="star-rating-container">
+              <span class="text-xs text-gray-500 mr-2">Rate your day:</span>
+              <button type="button" class="star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-star="1">★</button>
+              <button type="button" class="star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-star="2">★</button>
+              <button type="button" class="star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-star="3">★</button>
+              <button type="button" class="star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-star="4">★</button>
+              <button type="button" class="star-btn text-2xl text-gray-300 hover:text-yellow-400 transition-colors" data-star="5">★</button>
+              <span class="text-xs text-gray-400 ml-2" id="star-rating-label">Select a rating</span>
+            </div>
+            <!-- Day Summary -->
+            <div class="mb-3">
+              <textarea id="day-summary-input" rows="2"
+                class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                placeholder="Short summary of your day (optional)..."></textarea>
+            </div>
+            <!-- Did You Notice -->
+            <div class="mb-3">
+              <label class="block text-xs font-medium text-gray-500 mb-1">Did you notice? <span class="text-gray-400">(optional)</span></label>
+              <textarea id="day-notice-input" rows="2"
+                class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                placeholder="Any observation, pattern, or small win you noticed today..."></textarea>
+            </div>
+            <button type="button" id="btn-save-day-rating"
+              class="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary-dark transition-colors">
+              Save Reflection
+            </button>
+          </div>
         </div>
       </div>
 
@@ -218,7 +302,7 @@
             <option value="task">✅ Tasks</option>
           </select>
         </div>
-        <div id="capture-list" class="space-y-2">
+        <div id="capture-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
           <p class="text-sm text-gray-400 text-center py-6">No captures yet.</p>
         </div>
       </div>
@@ -315,7 +399,7 @@
             <option value="all">All Subjects</option>
           </select>
         </div>
-        <div id="all-entries-list" class="space-y-3">
+        <div id="all-entries-list" class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
           <div class="text-center py-12 text-gray-400">
             <div class="loader mx-auto mb-3"></div>
             <p class="text-sm">Loading entries...</p>
@@ -492,20 +576,45 @@
     }
 
     // ============ NAVIGATION ============
+    function navigateTo(targetScreen) {
+      // Update desktop nav
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll(`.nav-item[data-screen="${targetScreen}"]`).forEach(b => b.classList.add('active'));
+
+      // Update mobile nav
+      document.querySelectorAll('.mobile-nav-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('text-gray-400');
+        b.classList.remove('text-primary');
+      });
+      document.querySelectorAll(`.mobile-nav-btn[data-screen="${targetScreen}"]`).forEach(b => {
+        b.classList.add('active', 'text-primary');
+        b.classList.remove('text-gray-400');
+      });
+
+      // Switch screen
+      document.querySelectorAll('#app-shell .screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(`screen-${targetScreen}`).classList.add('active');
+
+      // Refresh data when switching tabs
+      if (targetScreen === 'dashboard') loadTodayRevisions();
+      if (targetScreen === 'capture') loadCaptures();
+      if (targetScreen === 'all-entries') loadAllEntries();
+      if (targetScreen === 'settings') { loadSubjects(); loadStats(); }
+      if (targetScreen === 'add-entry') populateSubjectDropdown();
+    }
+
+    // Desktop nav clicks
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', function() {
-        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-        this.classList.add('active');
-        const target = this.dataset.screen;
-        document.querySelectorAll('#app-shell .screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(`screen-${target}`).classList.add('active');
+        navigateTo(this.dataset.screen);
+      });
+    });
 
-        // Refresh data when switching tabs
-        if (target === 'dashboard') loadTodayRevisions();
-        if (target === 'capture') loadCaptures();
-        if (target === 'all-entries') loadAllEntries();
-        if (target === 'settings') { loadSubjects(); loadStats(); }
-        if (target === 'add-entry') populateSubjectDropdown();
+    // Mobile bottom nav clicks
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        navigateTo(this.dataset.screen);
       });
     });
 
@@ -527,6 +636,7 @@
         localStorage.setItem('completed_today', JSON.stringify({ date: today, ids: [] }));
       }
       updateProgress();
+      checkDayReflection();
     }
 
     // ============ DASHBOARD ============
@@ -1069,6 +1179,81 @@
         showToast('Deleted.', 'info');
         captureState.items = captureState.items.filter(c => c.capture_id !== captureId);
         renderCaptures();
+      }
+    }
+
+    // ============ HOW WAS YOUR DAY - STAR RATING ============
+    let dayRating = 0;
+
+    document.querySelectorAll('.star-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        dayRating = parseInt(this.dataset.star);
+        updateStarDisplay();
+      });
+    });
+
+    function updateStarDisplay() {
+      const labels = ['', 'Rough day', 'Below average', 'Okay', 'Good day', 'Amazing day!'];
+      document.querySelectorAll('.star-btn').forEach(btn => {
+        const star = parseInt(btn.dataset.star);
+        if (star <= dayRating) {
+          btn.classList.remove('text-gray-300');
+          btn.classList.add('text-yellow-400');
+        } else {
+          btn.classList.remove('text-yellow-400');
+          btn.classList.add('text-gray-300');
+        }
+      });
+      document.getElementById('star-rating-label').textContent = labels[dayRating] || 'Select a rating';
+    }
+
+    document.getElementById('btn-save-day-rating').addEventListener('click', function() {
+      if (dayRating === 0) {
+        showToast('Please select a star rating.', 'error');
+        return;
+      }
+
+      const summary = document.getElementById('day-summary-input').value.trim();
+      const notice = document.getElementById('day-notice-input').value.trim();
+      const today = new Date().toDateString();
+
+      // Save to localStorage (per day)
+      const reflection = { date: today, rating: dayRating, summary: summary, notice: notice };
+      localStorage.setItem('day_reflection_' + today, JSON.stringify(reflection));
+
+      // Also save to Google Sheet
+      const dateFormatted = new Date().toISOString().split('T')[0];
+      apiPost({
+        action: 'saveDayReflection',
+        reflection_id: generateUUID(),
+        date: dateFormatted,
+        rating: dayRating,
+        summary: summary,
+        notice: notice
+      });
+
+      // Show saved state
+      document.getElementById('day-rating-form-wrapper').classList.add('hidden');
+      document.getElementById('day-rating-saved').classList.remove('hidden');
+      document.getElementById('day-rating-saved-summary').textContent =
+        `${'★'.repeat(dayRating)}${'☆'.repeat(5 - dayRating)} — ${summary || 'No summary'}${notice ? ' | Noticed: ' + notice : ''}`;
+
+      showToast('Reflection saved!', 'success');
+    });
+
+    function checkDayReflection() {
+      const today = new Date().toDateString();
+      const saved = localStorage.getItem('day_reflection_' + today);
+      if (saved) {
+        const data = JSON.parse(saved);
+        dayRating = data.rating;
+        updateStarDisplay();
+        document.getElementById('day-summary-input').value = data.summary || '';
+        document.getElementById('day-notice-input').value = data.notice || '';
+        document.getElementById('day-rating-form-wrapper').classList.add('hidden');
+        document.getElementById('day-rating-saved').classList.remove('hidden');
+        document.getElementById('day-rating-saved-summary').textContent =
+          `${'★'.repeat(data.rating)}${'☆'.repeat(5 - data.rating)} — ${data.summary || 'No summary'}${data.notice ? ' | Noticed: ' + data.notice : ''}`;
       }
     }
 
