@@ -4,19 +4,25 @@
  * Deploy this as a Web App in Google Apps Script (Extensions > Apps Script).
  *
  * Sheet Structure (Row 1 Headers):
- * entry_id | subject | title | notes | links | current_stage | last_reviewed_at | next_review_at | intervals | created_at
+ * Sheet1:          entry_id | subject | title | notes | links | current_stage | last_reviewed_at | next_review_at | intervals | created_at
+ * Subjects:        subject
+ * Captures:        capture_id | type | title | description | priority | status | links | created_at
+ * DayReflections:  reflection_id | date | rating | summary | reflection | notice
  *
  * Setup:
  * 1. Create a Google Sheet with headers above in Row 1 of "Sheet1".
  * 2. Also create a sheet named "Subjects" with subject names in column A (starting row 2). Row 1 header: "subject".
- * 3. Open Extensions > Apps Script, paste this code.
- * 4. Run initialSetup() once.
- * 5. Deploy > New Deployment > Web App (Execute as: Me, Access: Anyone).
- * 6. Copy the Web App URL into your index.html SCRIPT_URL constant.
+ * 3. Create a sheet named "DayReflections" with headers: reflection_id | date | rating | summary | reflection | notice.
+ * 4. Open Extensions > Apps Script, paste this code.
+ * 5. Run initialSetup() once.
+ * 6. Deploy > New Deployment > Web App (Execute as: Me, Access: Anyone).
+ * 7. Copy the Web App URL into your index.html SCRIPT_URL constant.
  */
 
 var ENTRIES_SHEET = 'Sheet1';
 var SUBJECTS_SHEET = 'Subjects';
+var CAPTURES_SHEET = 'Captures';
+var REFLECTIONS_SHEET = 'DayReflections';
 var scriptProp = PropertiesService.getScriptProperties();
 
 function initialSetup() {
@@ -41,6 +47,12 @@ function doGet(e) {
       return getTodayRevisions(doc);
     } else if (action === 'getStats') {
       return getStats(doc);
+    } else if (action === 'getCaptures') {
+      return getCaptures(doc);
+    } else if (action === 'getDayReflection') {
+      return getDayReflection(doc, e);
+    } else if (action === 'getAllReflections') {
+      return getAllReflections(doc);
     }
 
     return jsonResponse({ result: 'error', error: 'Unknown action' });
@@ -82,6 +94,14 @@ function doPost(e) {
       return deleteSubject(doc, data);
     } else if (action === 'deleteEntry') {
       return deleteEntry(doc, data);
+    } else if (action === 'addCapture') {
+      return addCapture(doc, data);
+    } else if (action === 'updateCapture') {
+      return updateCapture(doc, data);
+    } else if (action === 'deleteCapture') {
+      return deleteCapture(doc, data);
+    } else if (action === 'saveDayReflection') {
+      return saveDayReflection(doc, data);
     }
 
     return jsonResponse({ result: 'error', error: 'Unknown action' });
@@ -282,6 +302,177 @@ function deleteSubject(doc, data) {
   }
 
   return jsonResponse({ result: 'error', error: 'Subject not found' });
+}
+
+// ==================== CAPTURE OPERATIONS ====================
+
+function addCapture(doc, data) {
+  var sheet = doc.getSheetByName(CAPTURES_SHEET);
+  if (!sheet) {
+    sheet = doc.insertSheet(CAPTURES_SHEET);
+    sheet.getRange(1, 1, 1, 7).setValues([['capture_id', 'type', 'title', 'description', 'priority', 'status', 'links', 'created_at']]);
+  }
+
+  var now = new Date();
+  var row = [
+    data.capture_id || Utilities.getUuid(),
+    data.type || 'thought',
+    data.title,
+    data.description || '',
+    data.priority || 'medium',
+    data.status || 'open',
+    JSON.stringify(data.links || []),
+    now.toISOString()
+  ];
+
+  sheet.appendRow(row);
+  return jsonResponse({ result: 'success', capture_id: row[0] });
+}
+
+function getCaptures(doc) {
+  var sheet = doc.getSheetByName(CAPTURES_SHEET);
+  if (!sheet) return jsonResponse({ result: 'success', captures: [] });
+
+  var allData = sheet.getDataRange().getValues();
+  var captures = [];
+
+  for (var i = 1; i < allData.length; i++) {
+    captures.push({
+      capture_id: allData[i][0],
+      type: allData[i][1],
+      title: allData[i][2],
+      description: allData[i][3],
+      priority: allData[i][4],
+      status: allData[i][5],
+      links: JSON.parse(allData[i][6] || '[]'),
+      created_at: allData[i][7]
+    });
+  }
+
+  // Return newest first
+  captures.reverse();
+  return jsonResponse({ result: 'success', captures: captures });
+}
+
+function updateCapture(doc, data) {
+  var sheet = doc.getSheetByName(CAPTURES_SHEET);
+  if (!sheet) return jsonResponse({ result: 'error', error: 'Captures sheet not found' });
+
+  var allData = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][0] === data.capture_id) {
+      if (data.status) sheet.getRange(i + 1, 6).setValue(data.status); // status is col F
+      return jsonResponse({ result: 'success' });
+    }
+  }
+
+  return jsonResponse({ result: 'error', error: 'Capture not found' });
+}
+
+function deleteCapture(doc, data) {
+  var sheet = doc.getSheetByName(CAPTURES_SHEET);
+  if (!sheet) return jsonResponse({ result: 'error', error: 'Captures sheet not found' });
+
+  var allData = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][0] === data.capture_id) {
+      sheet.deleteRow(i + 1);
+      return jsonResponse({ result: 'success' });
+    }
+  }
+
+  return jsonResponse({ result: 'error', error: 'Capture not found' });
+}
+
+// ==================== DAY REFLECTION OPERATIONS ====================
+
+function saveDayReflection(doc, data) {
+  var sheet = doc.getSheetByName(REFLECTIONS_SHEET);
+  if (!sheet) {
+    sheet = doc.insertSheet(REFLECTIONS_SHEET);
+    sheet.getRange(1, 1, 1, 6).setValues([['reflection_id', 'date', 'rating', 'summary', 'reflection', 'notice']]);
+  }
+
+  var dateStr = data.date; // e.g., "2026-07-14"
+
+  // Check if today's reflection already exists — update it
+  var allData = sheet.getDataRange().getValues();
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][1] === dateStr) {
+      // Update existing row
+      sheet.getRange(i + 1, 3).setValue(data.rating);
+      sheet.getRange(i + 1, 4).setValue(data.summary || '');
+      sheet.getRange(i + 1, 5).setValue(data.reflection || '');
+      sheet.getRange(i + 1, 6).setValue(data.notice || '');
+      return jsonResponse({ result: 'success', updated: true });
+    }
+  }
+
+  // Otherwise add new row
+  var row = [
+    data.reflection_id || Utilities.getUuid(),
+    dateStr,
+    data.rating,
+    data.summary || '',
+    data.reflection || '',
+    data.notice || ''
+  ];
+
+  sheet.appendRow(row);
+  return jsonResponse({ result: 'success', updated: false });
+}
+
+function getDayReflection(doc, e) {
+  var sheet = doc.getSheetByName(REFLECTIONS_SHEET);
+  if (!sheet) return jsonResponse({ result: 'success', reflection: null });
+
+  var dateStr = e.parameter.date; // e.g., "2026-07-14"
+  var allData = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][1] === dateStr) {
+      return jsonResponse({
+        result: 'success',
+        reflection: {
+          reflection_id: allData[i][0],
+          date: allData[i][1],
+          rating: parseFloat(allData[i][2]),
+          summary: allData[i][3],
+          reflection: allData[i][4] || '',
+          notice: allData[i][5] || ''
+        }
+      });
+    }
+  }
+
+  return jsonResponse({ result: 'success', reflection: null });
+}
+
+function getAllReflections(doc) {
+  var sheet = doc.getSheetByName(REFLECTIONS_SHEET);
+  if (!sheet) return jsonResponse({ result: 'success', reflections: [] });
+
+  var allData = sheet.getDataRange().getValues();
+  var reflections = [];
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][0]) {
+      reflections.push({
+        reflection_id: allData[i][0],
+        date: allData[i][1],
+        rating: parseFloat(allData[i][2]),
+        summary: allData[i][3] || '',
+        reflection: allData[i][4] || '',
+        notice: allData[i][5] || ''
+      });
+    }
+  }
+
+  // Return newest first
+  reflections.reverse();
+  return jsonResponse({ result: 'success', reflections: reflections });
 }
 
 // ==================== HELPERS ====================
