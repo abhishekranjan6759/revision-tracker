@@ -51,6 +51,8 @@
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
     .mobile-nav-btn.active { color: #1a56db; }
     .mobile-nav-btn.active svg { stroke-width: 2.5; }
+    /* Flashcard modal animation */
+    #flashcard-modal > div { animation: cardEnter 0.2s ease; }
     /* Half-star rating */
     .star-group, .sr-star-group { user-select: none; line-height: 1; }
     .star-group:hover, .sr-star-group:hover { transform: scale(1.1); transition: transform 0.1s; }
@@ -123,6 +125,7 @@
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="add-entry">Add New</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="all-entries">All Entries</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="self-reflection">Self Reflection</button>
+        <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="vocabulary">Vocabulary</button>
         <button class="nav-item px-4 py-2 text-sm font-medium text-gray-600" data-screen="settings">Settings</button>
       </nav>
     </header>
@@ -160,6 +163,12 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
         <span class="text-[10px] mt-0.5 font-medium">Reflect</span>
+      </button>
+      <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="vocabulary">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+        </svg>
+        <span class="text-[10px] mt-0.5 font-medium">Vocab</span>
       </button>
       <button class="mobile-nav-btn flex-1 flex flex-col items-center py-2 pt-2.5 text-gray-400" data-screen="settings">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -523,6 +532,92 @@
         </div>
       </div>
 
+      <!-- ==================== VOCABULARY SCREEN ==================== -->
+      <div id="screen-vocabulary" class="screen">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Vocabulary</h2>
+            <p class="text-sm text-gray-500">Build your word bank daily</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="bg-primary/10 text-primary px-3 py-1.5 rounded-full">
+              <span class="text-xs font-semibold" id="vocab-count">0 words</span>
+            </div>
+            <button id="btn-vocab-flashcard" class="px-3 py-1.5 bg-primary text-white text-xs font-medium rounded hover:bg-primary-dark transition-colors">
+              📇 Flashcards
+            </button>
+          </div>
+        </div>
+
+        <!-- Add Word Form -->
+        <form id="vocab-form" class="bg-white rounded shadow-sm p-5 mb-6">
+          <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">Add New Word</h3>
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Word / Phrase</label>
+            <input id="vocab-word" type="text" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="e.g., Ephemeral" />
+          </div>
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Meaning / Description</label>
+            <textarea id="vocab-description" rows="3" required
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              placeholder="e.g., Lasting for a very short time; transient."></textarea>
+          </div>
+          <button type="submit" id="btn-save-vocab"
+            class="w-full bg-primary text-white py-2 px-4 rounded text-sm font-medium hover:bg-primary-dark transition-colors">
+            Add Word
+          </button>
+        </form>
+
+        <!-- Word List -->
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-700">Your Words</h3>
+          <button id="btn-refresh-vocab" class="text-xs text-primary hover:underline">Refresh</button>
+        </div>
+        <div id="vocab-list" class="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+          <p class="text-sm text-gray-400 text-center py-6">No words added yet. Start building your vocabulary!</p>
+        </div>
+      </div>
+
+      <!-- ==================== FLASHCARD MODAL ==================== -->
+      <div id="flashcard-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto overflow-hidden">
+          <!-- Modal Header -->
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+            <h3 class="text-sm font-bold text-gray-700">Flashcard Review</h3>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-500" id="flashcard-progress">1 / 0</span>
+              <button id="btn-close-flashcard" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <!-- Flashcard Body -->
+          <div class="p-6 min-h-[250px] flex flex-col items-center justify-center text-center" id="flashcard-body">
+            <p class="text-lg font-semibold text-gray-900 mb-4" id="flashcard-word">Word</p>
+            <div id="flashcard-answer" class="hidden">
+              <div class="w-16 border-t border-gray-200 mx-auto mb-4"></div>
+              <p class="text-sm text-gray-600" id="flashcard-meaning">Meaning</p>
+            </div>
+            <button id="btn-show-answer" class="mt-4 px-4 py-2 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded text-sm font-medium hover:bg-yellow-100 transition-colors">
+              Show Meaning
+            </button>
+          </div>
+          <!-- Modal Footer -->
+          <div class="flex border-t border-gray-200">
+            <button id="btn-flashcard-prev" class="flex-1 py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-200">
+              ← Previous
+            </button>
+            <button id="btn-flashcard-next" class="flex-1 py-3 text-sm font-medium text-primary hover:bg-blue-50 transition-colors">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SETTINGS SCREEN ==================== -->
       <div id="screen-settings" class="screen">
         <h2 class="text-xl font-bold text-gray-900 mb-6">Settings</h2>
@@ -719,6 +814,7 @@
       if (targetScreen === 'settings') { loadSubjects(); loadStats(); }
       if (targetScreen === 'add-entry') populateSubjectDropdown();
       if (targetScreen === 'self-reflection') loadSelfReflections();
+      if (targetScreen === 'vocabulary') loadVocabulary();
     }
 
     // Desktop nav clicks
@@ -1593,6 +1689,143 @@
         container.innerHTML = '<p class="text-sm text-red-400 text-center py-6">Failed to load reflections.</p>';
       }
     }
+
+    // ============ VOCABULARY (WORD MEANINGS + FLASHCARDS) ============
+    let vocabState = { words: [], currentFlashcardIndex: 0, answerShown: false };
+
+    // Save word
+    document.getElementById('vocab-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-vocab');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const word = document.getElementById('vocab-word').value.trim();
+      const description = document.getElementById('vocab-description').value.trim();
+
+      const res = await apiPost({
+        action: 'addVocabulary',
+        word_id: generateUUID(),
+        word,
+        description
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Add Word';
+
+      if (res.result === 'success') {
+        showToast('Word added!', 'success');
+        document.getElementById('vocab-word').value = '';
+        document.getElementById('vocab-description').value = '';
+        loadVocabulary();
+      } else {
+        showToast('Failed to add word.', 'error');
+      }
+    });
+
+    // Load vocabulary
+    document.getElementById('btn-refresh-vocab').addEventListener('click', loadVocabulary);
+
+    async function loadVocabulary() {
+      const container = document.getElementById('vocab-list');
+      container.innerHTML = '<div class="text-center py-6"><div class="loader mx-auto mb-2"></div><p class="text-sm text-gray-400">Loading...</p></div>';
+
+      const res = await apiGet('getVocabulary');
+      if (res.result === 'success') {
+        vocabState.words = res.words || [];
+        document.getElementById('vocab-count').textContent = (res.count || 0) + ' words';
+        renderVocabList();
+      } else {
+        container.innerHTML = '<p class="text-sm text-red-400 text-center py-6">Failed to load vocabulary.</p>';
+      }
+    }
+
+    function renderVocabList() {
+      const container = document.getElementById('vocab-list');
+      if (vocabState.words.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-400 text-center py-6">No words added yet. Start building your vocabulary!</p>';
+        return;
+      }
+
+      container.innerHTML = vocabState.words.map(item => `
+        <div class="card-enter bg-white rounded shadow-sm p-3 flex items-start gap-3">
+          <span class="text-base mt-0.5">📖</span>
+          <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-semibold text-gray-900">${item.word}</h4>
+            <p class="text-xs text-gray-500 mt-0.5">${item.description}</p>
+            <span class="text-xs text-gray-300">${formatDate(item.created_at)}</span>
+          </div>
+          <button onclick="deleteVocabWord('${item.word_id}')" class="p-1 text-gray-400 hover:text-red-500" title="Delete">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteVocabWord(wordId) {
+      if (!confirm('Delete this word?')) return;
+      const res = await apiPost({ action: 'deleteVocabulary', word_id: wordId });
+      if (res.result === 'success') {
+        showToast('Word deleted.', 'info');
+        vocabState.words = vocabState.words.filter(w => w.word_id !== wordId);
+        document.getElementById('vocab-count').textContent = vocabState.words.length + ' words';
+        renderVocabList();
+      } else {
+        showToast('Failed to delete word.', 'error');
+      }
+    }
+
+    // Flashcard functionality
+    document.getElementById('btn-vocab-flashcard').addEventListener('click', function() {
+      if (vocabState.words.length === 0) {
+        showToast('Add some words first to review flashcards.', 'info');
+        return;
+      }
+      vocabState.currentFlashcardIndex = 0;
+      vocabState.answerShown = false;
+      document.getElementById('flashcard-modal').classList.remove('hidden');
+      renderFlashcard();
+    });
+
+    document.getElementById('btn-close-flashcard').addEventListener('click', function() {
+      document.getElementById('flashcard-modal').classList.add('hidden');
+    });
+
+    document.getElementById('btn-show-answer').addEventListener('click', function() {
+      vocabState.answerShown = true;
+      document.getElementById('flashcard-answer').classList.remove('hidden');
+      this.classList.add('hidden');
+    });
+
+    document.getElementById('btn-flashcard-next').addEventListener('click', function() {
+      if (vocabState.words.length === 0) return;
+      vocabState.currentFlashcardIndex = (vocabState.currentFlashcardIndex + 1) % vocabState.words.length;
+      vocabState.answerShown = false;
+      renderFlashcard();
+    });
+
+    document.getElementById('btn-flashcard-prev').addEventListener('click', function() {
+      if (vocabState.words.length === 0) return;
+      vocabState.currentFlashcardIndex = (vocabState.currentFlashcardIndex - 1 + vocabState.words.length) % vocabState.words.length;
+      vocabState.answerShown = false;
+      renderFlashcard();
+    });
+
+    function renderFlashcard() {
+      const word = vocabState.words[vocabState.currentFlashcardIndex];
+      document.getElementById('flashcard-word').textContent = word.word;
+      document.getElementById('flashcard-meaning').textContent = word.description;
+      document.getElementById('flashcard-progress').textContent = (vocabState.currentFlashcardIndex + 1) + ' / ' + vocabState.words.length;
+      document.getElementById('flashcard-answer').classList.add('hidden');
+      document.getElementById('btn-show-answer').classList.remove('hidden');
+    }
+
+    // Close flashcard modal on backdrop click
+    document.getElementById('flashcard-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.add('hidden');
+      }
+    });
 
     // ============ INITIALIZATION ============
     // Check for existing session on page load

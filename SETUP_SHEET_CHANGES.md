@@ -177,3 +177,71 @@ apiPost({
 
 - The **mobile navigation** and **vertical scroll** features are purely frontend (HTML/CSS/JS) — they require **no changes** to the Google Sheet or Apps Script.
 - The "How was your day?" feature already works offline via localStorage. The Sheet sync is an enhancement for cross-device persistence.
+
+
+---
+
+## Feature: Vocabulary (Word Meanings + Flashcard Review)
+
+This feature lets you add word meanings daily and review them using flashcards.
+
+---
+
+### Step 1: Create a New Sheet Tab in Google Sheets
+
+1. Open your Google Spreadsheet.
+2. At the bottom, click the **"+"** button to add a new sheet tab.
+3. Rename it to exactly: **`Vocabulary`**
+
+> Note: The sheet will be auto-created if it doesn't exist when you first add a word, but creating it manually ensures clean headers.
+
+---
+
+### Step 2: Add Headers in Row 1
+
+In the **Vocabulary** sheet, type these headers in Row 1:
+
+| Column A | Column B | Column C | Column D |
+|----------|----------|----------|----------|
+| `word_id` | `word` | `description` | `created_at` |
+
+- **word_id** — Unique ID for each word entry
+- **word** — The word or phrase
+- **description** — The meaning/definition of the word
+- **created_at** — Timestamp when the word was added
+
+---
+
+### Step 3: Update Google Apps Script
+
+The `google_app_script.js` file already includes the vocabulary operations. Make sure your deployed script contains:
+
+- `var VOCABULARY_SHEET = 'Vocabulary';` constant at the top
+- `getVocabulary` and `getVocabularyCount` cases in `doGet()`
+- `addVocabulary` and `deleteVocabulary` cases in `doPost()`
+- The vocabulary functions: `addVocabulary()`, `getVocabulary()`, `getVocabularyCount()`, `deleteVocabulary()`
+
+---
+
+### Step 4: Re-deploy the Apps Script
+
+After making the above code changes:
+
+1. Click **Deploy** → **Manage deployments**
+2. Click the **pencil icon** (edit) on your existing deployment
+3. Under **Version**, select **"New version"**
+4. Click **Deploy**
+
+---
+
+## Summary Checklist for Vocabulary Feature
+
+| # | Task | Where |
+|---|------|-------|
+| 1 | Create **Vocabulary** sheet tab | Google Sheets |
+| 2 | Add headers: `word_id`, `word`, `description`, `created_at` | Row 1 of Vocabulary |
+| 3 | Add `VOCABULARY_SHEET` constant | Apps Script (top) |
+| 4 | Add `getVocabulary` / `getVocabularyCount` in `doGet()` | Apps Script |
+| 5 | Add `addVocabulary` / `deleteVocabulary` in `doPost()` | Apps Script |
+| 6 | Add vocabulary functions | Apps Script |
+| 7 | Re-deploy as new version | Apps Script Deploy menu |

@@ -23,6 +23,7 @@ var ENTRIES_SHEET = 'Sheet1';
 var SUBJECTS_SHEET = 'Subjects';
 var CAPTURES_SHEET = 'Captures';
 var REFLECTIONS_SHEET = 'DayReflections';
+var VOCABULARY_SHEET = 'Vocabulary';
 var scriptProp = PropertiesService.getScriptProperties();
 
 function initialSetup() {
@@ -53,6 +54,10 @@ function doGet(e) {
       return getDayReflection(doc, e);
     } else if (action === 'getAllReflections') {
       return getAllReflections(doc);
+    } else if (action === 'getVocabulary') {
+      return getVocabulary(doc);
+    } else if (action === 'getVocabularyCount') {
+      return getVocabularyCount(doc);
     }
 
     return jsonResponse({ result: 'error', error: 'Unknown action' });
@@ -102,6 +107,10 @@ function doPost(e) {
       return deleteCapture(doc, data);
     } else if (action === 'saveDayReflection') {
       return saveDayReflection(doc, data);
+    } else if (action === 'addVocabulary') {
+      return addVocabulary(doc, data);
+    } else if (action === 'deleteVocabulary') {
+      return deleteVocabulary(doc, data);
     }
 
     return jsonResponse({ result: 'error', error: 'Unknown action' });
@@ -473,6 +482,75 @@ function getAllReflections(doc) {
   // Return newest first
   reflections.reverse();
   return jsonResponse({ result: 'success', reflections: reflections });
+}
+
+// ==================== VOCABULARY OPERATIONS ====================
+
+function addVocabulary(doc, data) {
+  var sheet = doc.getSheetByName(VOCABULARY_SHEET);
+  if (!sheet) {
+    sheet = doc.insertSheet(VOCABULARY_SHEET);
+    sheet.getRange(1, 1, 1, 4).setValues([['word_id', 'word', 'description', 'created_at']]);
+  }
+
+  var now = new Date();
+  var row = [
+    data.word_id || Utilities.getUuid(),
+    data.word,
+    data.description,
+    now.toISOString()
+  ];
+
+  sheet.appendRow(row);
+  return jsonResponse({ result: 'success', word_id: row[0] });
+}
+
+function getVocabulary(doc) {
+  var sheet = doc.getSheetByName(VOCABULARY_SHEET);
+  if (!sheet) return jsonResponse({ result: 'success', words: [], count: 0 });
+
+  var allData = sheet.getDataRange().getValues();
+  var words = [];
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][0]) {
+      words.push({
+        word_id: allData[i][0],
+        word: allData[i][1],
+        description: allData[i][2],
+        created_at: allData[i][3]
+      });
+    }
+  }
+
+  // Return newest first
+  words.reverse();
+  return jsonResponse({ result: 'success', words: words, count: words.length });
+}
+
+function getVocabularyCount(doc) {
+  var sheet = doc.getSheetByName(VOCABULARY_SHEET);
+  if (!sheet) return jsonResponse({ result: 'success', count: 0 });
+
+  var lastRow = sheet.getLastRow();
+  var count = lastRow > 1 ? lastRow - 1 : 0;
+  return jsonResponse({ result: 'success', count: count });
+}
+
+function deleteVocabulary(doc, data) {
+  var sheet = doc.getSheetByName(VOCABULARY_SHEET);
+  if (!sheet) return jsonResponse({ result: 'error', error: 'Vocabulary sheet not found' });
+
+  var allData = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < allData.length; i++) {
+    if (allData[i][0] === data.word_id) {
+      sheet.deleteRow(i + 1);
+      return jsonResponse({ result: 'success' });
+    }
+  }
+
+  return jsonResponse({ result: 'error', error: 'Word not found' });
 }
 
 // ==================== HELPERS ====================
