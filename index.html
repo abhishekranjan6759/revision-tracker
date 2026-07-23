@@ -464,6 +464,13 @@
         <div class="bg-white rounded shadow-sm p-5 mb-6">
           <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4">New Reflection</h3>
 
+          <!-- Date Picker -->
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+            <input type="date" id="sr-date"
+              class="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
           <!-- Star Rating for Reflection Screen -->
           <div class="mb-3">
             <div class="flex items-center gap-0.5" id="sr-star-rating-container">
@@ -813,7 +820,7 @@
       if (targetScreen === 'all-entries') loadAllEntries();
       if (targetScreen === 'settings') { loadSubjects(); loadStats(); }
       if (targetScreen === 'add-entry') populateSubjectDropdown();
-      if (targetScreen === 'self-reflection') loadSelfReflections();
+      if (targetScreen === 'self-reflection') { initSrDate(); loadSelfReflections(); }
       if (targetScreen === 'vocabulary') loadVocabulary();
     }
 
@@ -1543,6 +1550,13 @@
     // ============ SELF REFLECTION SCREEN ============
     let srRating = 0;
 
+    function initSrDate() {
+      const dateInput = document.getElementById('sr-date');
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
+      dateInput.max = today; // prevent future dates
+    }
+
     // Half-star click for Self Reflection screen
     document.querySelectorAll('.sr-star-group').forEach(group => {
       group.addEventListener('click', function(e) {
@@ -1626,7 +1640,7 @@
       this.disabled = true;
       this.innerHTML = '<div class="loader mx-auto" style="width:16px;height:16px;border-width:2px;"></div>';
 
-      const dateFormatted = new Date().toISOString().split('T')[0];
+      const dateFormatted = document.getElementById('sr-date').value;
       const res = await apiPost({
         action: 'saveDayReflection',
         reflection_id: generateUUID(),
@@ -1641,10 +1655,13 @@
       this.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Save Reflection`;
 
       if (res.result === 'success') {
-        // Also update localStorage for dashboard
+        // Also update localStorage for dashboard if it's today's date
+        const selectedDate = new Date(dateFormatted).toDateString();
         const today = new Date().toDateString();
-        const data = { date: today, rating: srRating, summary, reflection, notice };
-        localStorage.setItem('day_reflection_' + today, JSON.stringify(data));
+        if (selectedDate === today) {
+          const data = { date: today, rating: srRating, summary, reflection, notice };
+          localStorage.setItem('day_reflection_' + today, JSON.stringify(data));
+        }
 
         showToast('Reflection saved!', 'success');
         // Reset form
@@ -1653,6 +1670,7 @@
         document.getElementById('sr-summary').value = '';
         document.getElementById('sr-reflection').value = '';
         document.getElementById('sr-notice').value = '';
+        document.getElementById('sr-date').value = new Date().toISOString().split('T')[0];
         // Reload list
         loadSelfReflections();
       } else {
